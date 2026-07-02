@@ -1153,6 +1153,12 @@
       </div>
       <div class="form-row">
         <div class="form-group">
+          <label>Last 4 Digits</label>
+          <input type="text" class="form-control" id="cLast4" placeholder="4411" maxlength="4">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
           <label>Credit Limit (₹)</label>
           <input type="number" class="form-control" id="cLimit" placeholder="100000">
         </div>
@@ -1181,6 +1187,39 @@
           <input type="number" class="form-control" id="cOnlineCashback" placeholder="0" step="0.1">
         </div>
       </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Min Due % (of statement)</label>
+          <input type="number" class="form-control" id="cMinDuePct" placeholder="5" step="0.1" min="1" max="100">
+        </div>
+        <div class="form-group">
+          <label>Interest Rate (APR %)</label>
+          <input type="number" class="form-control" id="cApr" placeholder="42" step="0.1" min="0" max="100">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Due Date Weekend Rule</label>
+        <select class="form-control" id="cWeekendRollover">
+          <option value="none">No adjustment</option>
+          <option value="next_business_day">Push to next business day</option>
+          <option value="prev_business_day">Pull to previous business day</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Auto-Pay Bill</label>
+          <select class="form-control" id="cAutoPay" onchange="document.getElementById('cAutoPayAmountGroup').style.display=this.value==='fixed'?'block':'none';">
+            <option value="none">Off (manual)</option>
+            <option value="min">Min Due</option>
+            <option value="full">Full Statement</option>
+            <option value="fixed">Fixed Amount</option>
+          </select>
+        </div>
+        <div class="form-group" id="cAutoPayAmountGroup" style="display:none;">
+          <label>Fixed Amount (₹)</label>
+          <input type="number" class="form-control" id="cAutoPayAmount" placeholder="0">
+        </div>
+      </div>
       <div class="form-group">
           <label>Card Color</label>
           <select class="form-control" id="cColor">
@@ -1202,6 +1241,80 @@
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('cardModal')">Cancel</button>
       <button class="btn btn-primary" onclick="saveCard()">Save Card</button>
+    </div>
+  </div>
+</div>
+
+<!-- PAY BILL MODAL -->
+<div class="modal-overlay" id="payBillModal">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">Pay Card Bill — <span id="pbCardLabel"></span></span>
+      <button class="btn btn-ghost btn-icon" onclick="closeModal('payBillModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="pbCardId">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px;">
+        <div><div style="font-size:10px;color:var(--text3);">Min Due</div><div id="pbMinDue" style="font-size:14px;font-weight:700;">₹0</div></div>
+        <div><div style="font-size:10px;color:var(--text3);">Statement Amt</div><div id="pbStatementAmt" style="font-size:14px;font-weight:700;">₹0</div></div>
+        <div><div style="font-size:10px;color:var(--text3);">Total Outstanding</div><div id="pbTotalOutstanding" style="font-size:14px;font-weight:700;">₹0</div></div>
+      </div>
+      <div class="form-group">
+        <label>Amount to Pay</label>
+        <input type="number" class="form-control" id="pbAmount" placeholder="0">
+      </div>
+      <div style="display:flex;gap:6px;">
+        <button class="btn btn-ghost btn-sm" onclick="fillPayBillAmount('min')">Min Due</button>
+        <button class="btn btn-ghost btn-sm" onclick="fillPayBillAmount('statement')">Statement Amt</button>
+        <button class="btn btn-ghost btn-sm" onclick="fillPayBillAmount('total')">Total Outstanding</button>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('payBillModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="submitPayBill()">Pay</button>
+    </div>
+  </div>
+</div>
+
+<!-- STATEMENT HISTORY MODAL -->
+<div class="modal-overlay" id="statementHistoryModal">
+  <div class="modal" style="max-width:640px;">
+    <div class="modal-header">
+      <span class="modal-title">Statement History — <span id="histCardLabel"></span></span>
+      <button class="btn btn-ghost btn-icon" onclick="closeModal('statementHistoryModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <table style="width:100%;border-collapse:collapse;font-size:12px;">
+        <thead>
+          <tr style="text-align:left;color:var(--text3);font-size:10px;text-transform:uppercase;">
+            <th style="padding:6px;">Period</th><th style="padding:6px;">Statement</th>
+            <th style="padding:6px;">Paid</th><th style="padding:6px;">Remaining</th>
+            <th style="padding:6px;">Interest</th>
+            <th style="padding:6px;">Due</th><th style="padding:6px;">Status</th>
+          </tr>
+        </thead>
+        <tbody id="histBody"></tbody>
+      </table>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('statementHistoryModal')">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- UNBILLED TRANSACTIONS MODAL -->
+<div class="modal-overlay" id="unbilledModal">
+  <div class="modal" style="max-width:560px;">
+    <div class="modal-header">
+      <span class="modal-title">Unbilled Transactions — <span id="unbilledCardLabel"></span></span>
+      <button class="btn btn-ghost btn-icon" onclick="closeModal('unbilledModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="unbilledWindow" class="text-muted" style="font-size:11px;color:var(--text3);margin-bottom:10px;"></div>
+      <div id="unbilledList"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('unbilledModal')">Close</button>
     </div>
   </div>
 </div>
@@ -1399,6 +1512,15 @@ function loadDB() {
   if (!db.budgets) db.budgets = [];
   if (!db.cashbackRules) db.cashbackRules = [];
   if (!db.fixedSpends) db.fixedSpends = [];
+  if (!db.statementCycles) db.statementCycles = [];
+  // Migration: ensure every card has minDuePct/APR/weekendRollover for statement cycle engine
+  db.cards.forEach(c => {
+    if (c.minDuePct === undefined || c.minDuePct === null) c.minDuePct = 5;
+    if (c.interestRatePctApr === undefined || c.interestRatePctApr === null) c.interestRatePctApr = 42;
+    if (!c.weekendRollover) c.weekendRollover = 'none';
+    if (!c.autoPay) c.autoPay = 'none';
+    if (c.autoPayAmount === undefined || c.autoPayAmount === null) c.autoPayAmount = 0;
+  });
   // Start with clean transactions for real personal use
 }
 
@@ -1564,6 +1686,131 @@ function calculateCardOutstanding(cardId) {
   return Math.max(0, txOutstanding) + emiOutstanding;
 }
 
+// ============================================================
+// STATEMENT CYCLE ENGINE (per-card billing cycles, min-due, FIFO pay)
+// ============================================================
+function daysInMonth(y, m) { return new Date(y, m + 1, 0).getDate(); }
+function toDateStr(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+function isWeekendDate(d) { const day = d.getDay(); return day === 0 || day === 6; }
+function nextBusinessDay(d) { const r = new Date(d); while (isWeekendDate(r)) r.setDate(r.getDate() + 1); return r; }
+function prevBusinessDay(d) { const r = new Date(d); while (isWeekendDate(r)) r.setDate(r.getDate() - 1); return r; }
+function applyWeekendRule(card, d) {
+  if (!isWeekendDate(d)) return d;
+  if (card.weekendRollover === 'next_business_day') return nextBusinessDay(d);
+  if (card.weekendRollover === 'prev_business_day') return prevBusinessDay(d);
+  return d;
+}
+
+// Given a card and a tx date, resolve which statement cycle owns it
+function resolveCycleForCard(card, dateStr) {
+  const d = new Date(dateStr + 'T00:00:00');
+  const billDay = card.billDate || 1;
+  let closeY = d.getFullYear(), closeM = d.getMonth();
+  if (d.getDate() > billDay) closeM += 1;
+  const periodEnd = new Date(closeY, closeM, Math.min(billDay, daysInMonth(closeY, closeM)));
+  const prevClose = new Date(closeY, closeM - 1, Math.min(billDay, daysInMonth(closeY, closeM - 1)));
+  const periodStart = new Date(prevClose); periodStart.setDate(periodStart.getDate() + 1);
+  const dueDay = card.dueDate || billDay;
+  let dueY = periodEnd.getFullYear(), dueM = periodEnd.getMonth();
+  if (dueDay <= billDay) dueM += 1; // due date wraps into next month
+  let dueDate = new Date(dueY, dueM, Math.min(dueDay, daysInMonth(dueY, dueM)));
+  dueDate = applyWeekendRule(card, dueDate);
+  const cycleId = card.id + ':' + periodEnd.getFullYear() + '-' + String(periodEnd.getMonth() + 1).padStart(2, '0');
+  return { cycleId, cardId: card.id, periodStart: toDateStr(periodStart), periodEnd: toDateStr(periodEnd), dueDate: toDateStr(dueDate) };
+}
+
+// Full rebuild of db.statementCycles from transactions + payments (cheap, small dataset)
+function syncStatementCycles() {
+  const todayStr = toDateStr(new Date());
+  const refundMap = buildRefundMap();
+  const allCycles = [];
+  db.cards.forEach(card => {
+    const txs = db.transactions.filter(t => t.card === card.id && (t.type === 'expense' || t.type === 'refund') && t.date);
+    const cycleMap = {};
+    const getRow = (dateStr) => {
+      const c = resolveCycleForCard(card, dateStr);
+      if (!cycleMap[c.cycleId]) cycleMap[c.cycleId] = Object.assign({ spend: 0, refund: 0, cashback: 0 }, c);
+      return cycleMap[c.cycleId];
+    };
+    getRow(todayStr); // ensure current open cycle always exists
+    txs.forEach(t => {
+      const row = getRow(t.date);
+      if (t.type === 'expense') { row.spend += t.amount; row.cashback += effectiveCashback(t, refundMap); }
+      else if (t.type === 'refund') { row.refund += t.amount; }
+    });
+    const sorted = Object.values(cycleMap).sort((a, b) => a.periodEnd.localeCompare(b.periodEnd));
+    const payments = db.transactions.filter(t => t.card === card.id && t.type === 'payment')
+      .sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+    let paymentPool = payments.reduce((s, p) => s + p.amount, 0);
+    let opening = 0;
+    sorted.forEach(c => {
+      c.opening = opening;
+      const netThisCycle = c.spend - c.refund - c.cashback;
+      if (c.periodEnd < todayStr) {
+        c.statementAmount = Math.max(0, opening + netThisCycle);
+        c.minDue = Math.round(c.statementAmount * ((card.minDuePct || 5) / 100));
+        const applied = Math.min(paymentPool, c.statementAmount);
+        paymentPool -= applied;
+        c.paid = applied;
+        c.remaining = Math.max(0, c.statementAmount - applied);
+        c.status = c.remaining <= 0.5 ? 'paid' : (c.dueDate < todayStr ? 'overdue' : 'closed');
+        c.unbilled = 0;
+        if (c.status === 'overdue') {
+          const daysOverdue = Math.max(0, Math.floor((new Date(todayStr) - new Date(c.dueDate)) / 86400000));
+          const apr = card.interestRatePctApr || 42;
+          c.interestAccrued = Math.round(c.remaining * (apr / 100 / 365) * daysOverdue);
+        } else {
+          c.interestAccrued = 0;
+        }
+        opening = c.remaining; // unpaid balance revolves into next cycle's opening balance
+      } else {
+        c.statementAmount = 0; c.minDue = 0; c.paid = 0; c.remaining = 0; c.interestAccrued = 0;
+        c.status = 'open';
+        c.unbilled = Math.max(0, opening + netThisCycle);
+        opening = 0;
+      }
+      allCycles.push(c);
+    });
+  });
+  db.statementCycles = allCycles;
+  assertCycleInvariants(allCycles);
+  return allCycles;
+}
+
+function getCardSnapshot(cardId) {
+  const cycles = db.statementCycles.filter(c => c.cardId === cardId).sort((a, b) => a.periodEnd.localeCompare(b.periodEnd));
+  const open = cycles.find(c => c.status === 'open') || null;
+  const closedCycles = cycles.filter(c => c.status !== 'open');
+  const latestClosed = closedCycles.length ? closedCycles[closedCycles.length - 1] : null;
+  const totalOutstanding = closedCycles.filter(c => c.status !== 'paid').reduce((s, c) => s + c.remaining + (c.interestAccrued||0), 0) + (open ? open.unbilled : 0);
+  const todayStr = toDateStr(new Date());
+  const daysRemaining = latestClosed ? Math.ceil((new Date(latestClosed.dueDate) - new Date(todayStr)) / 86400000) : null;
+  return { open, latestClosed, cycles, totalOutstanding, daysRemaining };
+}
+
+function getStatementHistory(cardId) {
+  return db.statementCycles.filter(c => c.cardId === cardId && c.status !== 'open').sort((a, b) => b.periodEnd.localeCompare(a.periodEnd));
+}
+
+// Invariants — data-integrity sanity checks over statement cycles.
+// Never throws to the user; logs to console and (if broken) shows a one-time warning toast,
+// so a silent bug in the billing math surfaces instead of quietly showing wrong numbers.
+function assertCycleInvariants(cycles) {
+  const problems = [];
+  cycles.forEach(c => {
+    if (c.remaining < -0.5) problems.push(`${c.cycleId}: negative remaining (${c.remaining})`);
+    if (c.status !== 'open') {
+      const drift = Math.abs((c.paid + c.remaining) - c.statementAmount);
+      if (drift > 1) problems.push(`${c.cycleId}: paid+remaining drift from statementAmount (Δ${drift.toFixed(2)})`);
+    }
+    if (c.minDue < 0) problems.push(`${c.cycleId}: negative minDue`);
+  });
+  if (problems.length) {
+    console.warn('⚠️ Statement cycle invariant violations:', problems);
+  }
+  return problems;
+}
+
 // EMI Auto-Pay: check if card bill date has passed and auto-pay due EMIs
 function checkEmiAutoPay() {
   const now = new Date();
@@ -1620,6 +1867,48 @@ function checkEmiAutoPay() {
 function getCardLabel(id) {
   const c = getCardById(id);
   return c ? `${c.bank} ${c.name}` : (id || 'UPI/Cash');
+}
+
+// Card Bill Auto-Pay: once a statement closes, if card.autoPay is set,
+// automatically create a payment tx on/after the due date (one attempt per cycle, ever).
+function checkCardAutoPay() {
+  syncStatementCycles();
+  const todayStr = toDateStr(new Date());
+  let autoPaid = 0;
+  db.cards.forEach(card => {
+    if (!card.autoPay || card.autoPay === 'none') return;
+    const snap = getCardSnapshot(card.id);
+    const c = snap.latestClosed;
+    if (!c || c.status === 'paid') return;
+    if (todayStr < c.dueDate) return; // trigger only once due date reached
+
+    const alreadyAttempted = db.transactions.some(t => t._autoPayCycleId === c.cycleId);
+    if (alreadyAttempted) return;
+
+    let amount = 0;
+    if (card.autoPay === 'min') amount = c.minDue;
+    else if (card.autoPay === 'full') amount = c.remaining;
+    else if (card.autoPay === 'fixed') amount = Math.min(card.autoPayAmount || 0, c.remaining);
+    if (!amount || amount <= 0) return;
+
+    const tx = {
+      id: uid(), date: todayStr,
+      merchant: 'Card Bill Payment (Auto)',
+      amount,
+      category: 'Financial > Credit Card Payment',
+      card: card.id, paymentMode: 'Bank Transfer',
+      type: 'payment', cashbackPct: 0, cashbackAmt: 0, _originalCashbackAmt: 0, netSpend: 0,
+      notes: `Auto-pay (${card.autoPay}) — ${card.bank} ${card.name}, cycle ${c.periodStart} → ${c.periodEnd}`,
+      tags: ['card-bill-payment', 'auto-pay'], rewardPoints: 0, _autoPayCycleId: c.cycleId
+    };
+    db.transactions.unshift(tx);
+    autoPaid++;
+  });
+  if (autoPaid > 0) {
+    saveDB();
+    syncStatementCycles();
+    showToast(`✅ ${autoPaid} card bill(s) auto-paid`, 'green');
+  }
 }
 
 function isOnlineTx(tx) {
@@ -2800,6 +3089,7 @@ function renderBarChart(months) {
 // CREDIT CARDS
 // ============================================================
 function renderCards() {
+  syncStatementCycles();
   const cur = nowMonth();
   const today = new Date();
   const refundMap = buildRefundMap();
@@ -2841,6 +3131,13 @@ function renderCards() {
     const utilColor = util>80?'var(--red)':util>50?'var(--orange)':'var(--green)';
     const colors = CARD_COLORS[card.color||'blue'];
     const dueDay = card.dueDate;
+    const snap = getCardSnapshot(card.id);
+    const stmtAmt = snap.latestClosed ? snap.latestClosed.remaining : 0;
+    const minDueAmt = snap.latestClosed ? snap.latestClosed.minDue : 0;
+    const daysLeft = snap.daysRemaining;
+    const stmtStatus = snap.latestClosed ? snap.latestClosed.status : null;
+    const interestAccrued = snap.latestClosed ? (snap.latestClosed.interestAccrued||0) : 0;
+    const stmtColor = stmtStatus === 'overdue' ? 'var(--red)' : stmtStatus === 'paid' ? 'var(--green)' : 'var(--orange)';
     const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
     const nowD = new Date();
     const nextEmiLabel = emiTotalLocked > 0 ? (emiPendingThisMonth > 0
@@ -2848,8 +3145,8 @@ function renderCards() {
       : MONTH_NAMES[(nowD.getMonth()+1)%12] + ' — ' + fmt(emiNextInstallment) + ' upcoming') : '';
     return `<div>
       <div class="cc-card" style="--c1:${colors[0]};--c2:${colors[1]};margin-bottom:16px;">
-        <div class="cc-bank">${card.bank}</div>
-        <div class="cc-name">${card.name}</div>
+        <div class="cc-bank">${card.bank}${card.autoPay&&card.autoPay!=='none'?` <span style="font-size:9px;background:rgba(34,197,94,0.2);color:var(--green);padding:2px 6px;border-radius:10px;vertical-align:middle;">AUTO-PAY: ${card.autoPay.toUpperCase()}</span>`:''}</div>
+        <div class="cc-name">${card.name}${card.last4?` · •• ${card.last4}`:''}</div>
         <div class="cc-limit">
           <div class="l">CREDIT LIMIT</div>
           <div class="v">${fmt(card.limit)}</div>
@@ -2873,12 +3170,27 @@ function renderCards() {
             </div>` : ''}
             ${card.points ? `<div><div style="font-size:10px;color:var(--text3);">Reward Points</div><div style="font-size:14px;font-weight:600;color:var(--purple);">${card.points.toLocaleString()}</div></div>` : ''}
           </div>
+          ${stmtStatus ? `<div style="padding:10px;background:rgba(255,255,255,0.03);border-radius:6px;border:1px solid var(--border);margin-bottom:12px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+              <span style="font-size:10px;color:var(--text3);text-transform:uppercase;">Latest Statement</span>
+              <span style="font-size:10px;font-weight:700;color:${stmtColor};text-transform:capitalize;">${stmtStatus}</span>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
+              <div><div style="font-size:10px;color:var(--text3);">Amount Due</div><div style="font-size:14px;font-weight:700;color:${stmtColor};">${fmt(stmtAmt)}</div></div>
+              <div><div style="font-size:10px;color:var(--text3);">Min Due</div><div style="font-size:14px;font-weight:600;">${fmt(minDueAmt)}</div></div>
+              <div><div style="font-size:10px;color:var(--text3);">Days Left</div><div style="font-size:14px;font-weight:600;color:${daysLeft!==null&&daysLeft<0?'var(--red)':'var(--text)'};">${daysLeft!==null?daysLeft:'—'}</div></div>
+            </div>
+            ${interestAccrued>0?`<div style="margin-top:8px;font-size:11px;color:var(--red);">⚠️ Overdue interest accrued (est.): <strong>${fmt(interestAccrued)}</strong></div>`:''}
+          </div>` : ''}
           <div style="margin-bottom:6px;display:flex;justify-content:space-between;font-size:12px;">
             <span>Utilization</span><span style="color:${utilColor};font-weight:600;">${fmtPct(util)}</span>
           </div>
           <div class="progress-bar" style="margin-bottom:4px;"><div class="progress-fill" style="width:${util}%;background:${utilColor};"></div></div>
           ${emiTotalLocked>0?`<div style="font-size:10px;color:var(--text3);margin-bottom:8px;">Spend: <span style="color:var(--red);">${fmt(Math.max(0,cycleOutstanding))}</span> + EMI locked: <span style="color:var(--orange);">${fmt(emiTotalLocked)}</span></div>`:''}
-          <div style="display:flex;gap:8px;margin-top:8px;">
+          <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;">
+            ${stmtAmt>0?`<button class="btn btn-primary btn-sm" onclick="openPayBillModal('${card.id}')">💳 Pay Bill</button>`:''}
+            <button class="btn btn-ghost btn-sm" onclick="openStatementHistory('${card.id}')">📜 Statements</button>
+            <button class="btn btn-ghost btn-sm" onclick="openUnbilledTx('${card.id}')">🧾 Unbilled</button>
             <button class="btn btn-ghost btn-sm" onclick="editCard('${card.id}')">✏️ Edit</button>
             <button class="btn btn-danger btn-sm" onclick="deleteCard('${card.id}')">🗑️</button>
           </div>
@@ -2888,10 +3200,96 @@ function renderCards() {
   }).join('');
 }
 
+function openPayBillModal(cardId) {
+  const card = getCardById(cardId); if (!card) return;
+  syncStatementCycles();
+  const snap = getCardSnapshot(cardId);
+  document.getElementById('pbCardId').value = cardId;
+  document.getElementById('pbCardLabel').textContent = card.bank + ' ' + card.name;
+  document.getElementById('pbMinDue').textContent = fmt(snap.latestClosed ? snap.latestClosed.minDue : 0);
+  document.getElementById('pbStatementAmt').textContent = fmt(snap.latestClosed ? snap.latestClosed.remaining : 0);
+  document.getElementById('pbTotalOutstanding').textContent = fmt(snap.totalOutstanding);
+  document.getElementById('pbAmount').value = '';
+  openModal('payBillModal');
+}
+
+function fillPayBillAmount(kind) {
+  const cardId = document.getElementById('pbCardId').value;
+  const snap = getCardSnapshot(cardId);
+  let v = 0;
+  if (kind === 'min') v = snap.latestClosed ? snap.latestClosed.minDue : 0;
+  if (kind === 'statement') v = snap.latestClosed ? snap.latestClosed.remaining : 0;
+  if (kind === 'total') v = snap.totalOutstanding;
+  document.getElementById('pbAmount').value = v ? Math.round(v) : 0;
+}
+
+function submitPayBill() {
+  const cardId = document.getElementById('pbCardId').value;
+  const amount = parseFloat(document.getElementById('pbAmount').value);
+  if (!amount || amount <= 0) { showToast('❌ Enter a valid amount', 'red'); return; }
+  const card = getCardById(cardId); if (!card) return;
+  const tx = {
+    id: uid(), date: toDateStr(new Date()),
+    merchant: 'Card Bill Payment', amount,
+    category: 'Financial > Credit Card Payment',
+    card: cardId, paymentMode: 'Bank Transfer',
+    type: 'payment', cashbackPct: 0, cashbackAmt: 0, _originalCashbackAmt: 0, netSpend: 0,
+    notes: `Bill payment — ${card.bank} ${card.name}`,
+    tags: ['card-bill-payment'], rewardPoints: 0
+  };
+  db.transactions.unshift(tx);
+  saveDB();
+  closeModal('payBillModal');
+  syncStatementCycles();
+  showToast(`✅ Payment of ${fmt(amount)} recorded`, 'green');
+  renderCards();
+}
+
+function openUnbilledTx(cardId) {
+  syncStatementCycles();
+  const card = getCardById(cardId); if (!card) return;
+  const snap = getCardSnapshot(cardId);
+  document.getElementById('unbilledCardLabel').textContent = card.bank + ' ' + card.name;
+  if (!snap.open) { document.getElementById('unbilledList').innerHTML = ''; openModal('unbilledModal'); return; }
+  document.getElementById('unbilledWindow').textContent = `${snap.open.periodStart} → today · Closes ${snap.open.periodEnd}`;
+  const txs = db.transactions
+    .filter(t => t.card === cardId && (t.type === 'expense' || t.type === 'refund') && t.date >= snap.open.periodStart)
+    .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+  document.getElementById('unbilledList').innerHTML = txs.length ? txs.map(t => `
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px;">
+      <div>
+        <div style="font-weight:600;">${t.merchant}</div>
+        <div style="font-size:11px;color:var(--text3);">${t.date} · ${(t.category||'').split(' > ').pop()}</div>
+      </div>
+      <div style="font-weight:700;color:${t.type==='refund'?'var(--green)':'var(--red)'};">${t.type==='refund'?'+':'-'}${fmt(t.amount)}</div>
+    </div>`).join('') : '<div style="padding:16px;text-align:center;color:var(--text3);">No unbilled transactions this cycle.</div>';
+  openModal('unbilledModal');
+}
+
+function openStatementHistory(cardId) {
+  syncStatementCycles();
+  const card = getCardById(cardId); if (!card) return;
+  document.getElementById('histCardLabel').textContent = card.bank + ' ' + card.name;
+  const cycles = getStatementHistory(cardId);
+  const badgeColor = s => ({ paid: 'var(--green)', closed: 'var(--cyan)', overdue: 'var(--red)' }[s] || 'var(--text3)');
+  document.getElementById('histBody').innerHTML = cycles.length ? cycles.map(c => `
+    <tr style="border-top:1px solid var(--border);">
+      <td style="padding:8px 6px;">${c.periodStart} → ${c.periodEnd}</td>
+      <td style="padding:8px 6px;">${fmt(c.statementAmount)}</td>
+      <td style="padding:8px 6px;color:var(--green);">${fmt(c.paid)}</td>
+      <td style="padding:8px 6px;color:var(--red);">${fmt(c.remaining)}</td>
+      <td style="padding:8px 6px;color:var(--red);">${c.interestAccrued?fmt(c.interestAccrued):'—'}</td>
+      <td style="padding:8px 6px;">${c.dueDate}</td>
+      <td style="padding:8px 6px;"><span style="color:${badgeColor(c.status)};font-weight:600;text-transform:capitalize;">${c.status}</span></td>
+    </tr>`).join('') : '<tr><td colspan="7" style="padding:16px;text-align:center;color:var(--text3);">No closed statements yet.</td></tr>';
+  openModal('statementHistoryModal');
+}
+
 function openCardModal(card) {
   if (card) {
     document.getElementById('cBank').value = card.bank;
     document.getElementById('cName').value = card.name;
+    document.getElementById('cLast4').value = card.last4 || '';
     document.getElementById('cLimit').value = card.limit;
     document.getElementById('cBillDate').value = card.billDate;
     document.getElementById('cDueDate').value = card.dueDate;
@@ -2900,11 +3298,20 @@ function openCardModal(card) {
     document.getElementById('cOnlineCashback').value = card.onlineCashbackPct || card.cashbackPct || 0;
     document.getElementById('cColor').value = card.color || 'blue';
     document.getElementById('cCashbackToCard').checked = card.cashbackToCard || false;
+    document.getElementById('cMinDuePct').value = card.minDuePct !== undefined ? card.minDuePct : 5;
+    document.getElementById('cApr').value = card.interestRatePctApr !== undefined ? card.interestRatePctApr : 42;
+    document.getElementById('cWeekendRollover').value = card.weekendRollover || 'none';
+    document.getElementById('cAutoPay').value = card.autoPay || 'none';
+    document.getElementById('cAutoPayAmount').value = card.autoPayAmount || '';
+    document.getElementById('cAutoPayAmountGroup').style.display = (card.autoPay === 'fixed') ? 'block' : 'none';
     openModal('cardModal');
     document.getElementById('cardModal').dataset.editId = card.id;
   } else {
-    ['cBank','cName','cLimit','cBillDate','cDueDate','cPoints','cCashback','cOnlineCashback'].forEach(id=>document.getElementById(id).value='');
+    ['cBank','cName','cLast4','cLimit','cBillDate','cDueDate','cPoints','cCashback','cOnlineCashback','cMinDuePct','cApr','cAutoPayAmount'].forEach(id=>document.getElementById(id).value='');
     document.getElementById('cCashbackToCard').checked = false;
+    document.getElementById('cWeekendRollover').value = 'none';
+    document.getElementById('cAutoPay').value = 'none';
+    document.getElementById('cAutoPayAmountGroup').style.display = 'none';
     document.getElementById('cardModal').dataset.editId = '';
     openModal('cardModal');
   }
@@ -2920,6 +3327,7 @@ function saveCard() {
   const card = {
     id: editId || uid(),
     bank, name,
+    last4: document.getElementById('cLast4').value.trim(),
     limit: parseFloat(document.getElementById('cLimit').value)||0,
     billDate: parseInt(document.getElementById('cBillDate').value)||17,
     dueDate: parseInt(document.getElementById('cDueDate').value)||7,
@@ -2928,12 +3336,18 @@ function saveCard() {
     onlineCashbackPct: parseFloat(document.getElementById('cOnlineCashback')?.value)||parseFloat(document.getElementById('cCashback').value)||0,
     color: document.getElementById('cColor').value,
     cashbackToCard: document.getElementById('cCashbackToCard').checked,
+    minDuePct: parseFloat(document.getElementById('cMinDuePct').value)||5,
+    interestRatePctApr: parseFloat(document.getElementById('cApr').value)||42,
+    weekendRollover: document.getElementById('cWeekendRollover').value || 'none',
+    autoPay: document.getElementById('cAutoPay').value || 'none',
+    autoPayAmount: parseFloat(document.getElementById('cAutoPayAmount').value)||0,
     outstanding: 0
   };
   if (editId) { const i=db.cards.findIndex(c=>c.id===editId); if(i>=0) db.cards[i]=card; }
   else db.cards.push(card);
   saveDB(); closeModal('cardModal');
   showToast('✅ Card saved', 'green');
+  syncStatementCycles();
   renderCards();
 }
 
@@ -3509,6 +3923,7 @@ try {
     loadRichDemoData();
   }
   checkEmiAutoPay();
+  checkCardAutoPay();
   renderDashboard();
   (function updateTopbarDate() {
     const now = new Date();
